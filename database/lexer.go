@@ -9,7 +9,7 @@ import (
 
 // Pos represents a byte position in the original input text from which
 // this template was parsed.
-type Pos int
+//type Pos int
 
 type ItemType int
 
@@ -24,52 +24,14 @@ type Item struct {
 const eof = -1
 
 const (
-	ItemError    ItemType = iota // error occurred; value is text of error
-	ItemAsterisk                 // printable ascii character; grab bag for *
-	ItemLeftDelimiter
-	ItemRightDelimiter
-	ItemEOF    //
-	ItemSpace  // run of spaces separating arguments
-	ItemString // quoted string (includes quotes)
-	ItemWord   // plain text
-	ItemKeyword
-	ItemAccess
-	ItemAllow
-	ItemDeny
-	ItemGroup
-	ItemDatabase
-	ItemData
-	ItemIndex
+	ItemError          ItemType = iota // error occurred; value is text of error
+	ItemAsterisk                       // printable ascii character; grab bag for *
+	ItemLeftDelimiter                  // { character
+	ItemRightDelimiter                 // } character
+	ItemEOF                            //
+	ItemSpace                          // run of spaces separating arguments
+	ItemText                           // plain text
 )
-
-var tokenWords = []string{
-	"Error",
-	"Asterisk",
-	"Left Delimiter",
-	"Right Delimiter",
-	"EOF",
-	"Space",
-	"String",
-	"Word",
-	"Keyword",
-	"Access",
-	"Allow",
-	"Deny",
-	"Group",
-	"Database",
-	"Data",
-	"Index",
-}
-
-var preDefined = map[string]ItemType{
-	"access":   ItemAccess,
-	"allow":    ItemAllow,
-	"deny":     ItemDeny,
-	"group":    ItemGroup,
-	"database": ItemDatabase,
-	"data":     ItemData,
-	"index":    ItemIndex,
-}
 
 func (i Item) String() string {
 
@@ -80,10 +42,8 @@ func (i Item) String() string {
 		return i.Val
 	case i.Typ == ItemSpace:
 		return ""
-	case i.Typ > ItemKeyword:
-		return fmt.Sprintf("Keyword :  %d/%d %s \n", i.Line, i.Pos, i.Val)
 	default:
-		return fmt.Sprintf("%s :  %d/%d %s \n", tokenWords[i.Typ], i.Line, i.Pos, i.Val)
+		return fmt.Sprintf("Keyword :  %d/%d %s \n", i.Line, i.Pos, i.Val)
 	}
 	return ""
 
@@ -157,6 +117,19 @@ func (l *Lexer) emit(t ItemType) {
 	l.StartLine = l.Line
 }
 
+// nextItem returns the next item from the input.
+// Called by the parser, not in the lexing goroutine.
+func (l *Lexer) nextItem() Item {
+	return <-l.Items
+}
+
+// drain drains the output so the lexing goroutine will exit.
+// Called by the parser, not in the lexing goroutine.
+func (l *Lexer) drain() {
+	for range l.Items {
+	}
+}
+
 // lexText scans until an opening action delimiter, "{{".
 func lexText(l *Lexer) stateFn {
 
@@ -186,6 +159,8 @@ func lexText(l *Lexer) stateFn {
 // lexQuote scans until the end of a quote
 func lexQuote(l *Lexer) stateFn {
 
+	// This ignores the quote character.
+	l.ignore()
 Loop:
 	for {
 		switch l.next() {
@@ -200,7 +175,12 @@ Loop:
 			break Loop
 		}
 	}
-	l.emit(ItemString)
+
+	// This ignores the second quote character.
+	l.backup()
+	l.emit(ItemText)
+	// We put the ignored character back into reading process.
+	l.next()
 	return lexText
 
 }
@@ -235,15 +215,15 @@ Loop:
 			// absorb.
 		default:
 			l.backup()
-			word := l.Input[l.Start:l.Pos]
+			//word := l.Input[l.Start:l.Pos]
 			//	fmt.Printf("Catched >%s<  ", word)
-			mm, ok := preDefined[word]
-			switch {
-			case ok:
-				l.emit(mm)
-			default:
-				l.emit(ItemWord)
-			}
+			//_, ok := preDefined[word]
+			//switch {
+			//case ok:
+			//l.emit(ItemKeyword)
+			//default:
+			l.emit(ItemText)
+			//}
 
 			break Loop
 		}
