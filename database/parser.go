@@ -108,11 +108,11 @@ func (t *Tree) recover(errp *error) {
 // the treeSet map.
 func (t *Tree) Parse(text string) (err error) {
 	defer t.recover(&err)
-	s := t.peek().Pos
-	fmt.Printf("%T", s)
-	t.Root = t.newList(Pos(0))
-
 	t.Lex = Lex(text)
+	s := t.peek().Pos
+	//	fmt.Printf("%T", s)
+	t.Root = t.newList(s)
+
 	t.parse()
 	return nil
 }
