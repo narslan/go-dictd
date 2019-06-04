@@ -2,16 +2,7 @@ package database
 
 import (
 	"fmt"
-	"runtime"
 )
-
-// Tree is the representation of a single parsed string.
-type Tree struct {
-	Root      *ListNode
-	Lex       *Lexer
-	peekCount int
-	token     [3]Item
-}
 
 // Parse returns a map from template name to parse.Tree, created by parsing the
 // templates described in the argument string. The top-level template will be
@@ -20,86 +11,9 @@ type Tree struct {
 // next returns the next token.
 func Parse(text string) {
 
-	t := New()
+	t := NewTree()
 	t.Parse(text)
 
-}
-
-func (t *Tree) next() Item {
-	if t.peekCount > 0 {
-		t.peekCount--
-	} else {
-		t.token[0] = t.Lex.nextItem()
-	}
-	return t.token[t.peekCount]
-}
-
-// peek returns but does not consume the next token.
-func (t *Tree) peek() Item {
-	if t.peekCount > 0 {
-		return t.token[t.peekCount-1]
-	}
-	t.peekCount = 1
-	t.token[0] = t.Lex.nextItem()
-	return t.token[0]
-}
-
-// backup backs the input stream up one token.
-func (t *Tree) backup() {
-	t.peekCount++
-}
-
-// nextNonSpace returns the next non-space token.
-func (t *Tree) nextNonSpace() (token Item) {
-	for {
-		token = t.next()
-		if token.Typ != ItemSpace {
-			break
-		}
-	}
-	return token
-}
-
-// peekNonSpace returns but does not consume the next non-space token.
-func (t *Tree) peekNonSpace() (token Item) {
-	for {
-		token = t.next()
-		if token.Typ != ItemSpace {
-			break
-		}
-	}
-	t.backup()
-	return token
-}
-
-// New allocates a new parse tree.
-func New() *Tree {
-	return &Tree{}
-}
-
-// errorf formats the error and terminates processing.
-func (t *Tree) errorf(format string) {
-	format = fmt.Sprintf("%d: %s", t.token[0].Line, format)
-	panic(fmt.Errorf(format))
-}
-
-// error terminates processing.
-func (t *Tree) error(err error) {
-	t.errorf(fmt.Sprintf("%s", err))
-}
-
-// recover is the handler that turns panics into returns from the top level of Parse.
-func (t *Tree) recover(errp *error) {
-	e := recover()
-	if e != nil {
-		if _, ok := e.(runtime.Error); ok {
-			panic(e)
-		}
-		if t != nil {
-			t.Lex.drain()
-		}
-		*errp = e.(error)
-	}
 }
 
 // Parse parses the template definition string to construct a representation of
@@ -111,7 +25,7 @@ func (t *Tree) Parse(text string) (err error) {
 	t.Lex = Lex(text)
 	s := t.peek().Pos
 	//	fmt.Printf("%T", s)
-	t.Root = t.newList(s)
+	t.Root = t.NewList(s)
 
 	t.parse()
 	return nil
@@ -125,10 +39,10 @@ func (t *Tree) parse() {
 	for t.peek().Typ != ItemEOF {
 
 		switch n := t.textOrAction(); n.Type() {
-		case nodeEnd:
+		case NodeEnd:
 			t.errorf(fmt.Sprintf("unexpected %s", n))
 		default:
-			t.Root.append(n)
+			t.Root.Append(n)
 			fmt.Println(n)
 		}
 
@@ -138,13 +52,13 @@ func (t *Tree) parse() {
 // textOrAction:
 //	text | action
 func (t *Tree) textOrAction() Node {
-	switch token := t.nextNonSpace(); {
-	case token.Typ == ItemText:
-		return t.newText(token.Pos, token.Val)
-	case token.Typ == ItemLeftDelimiter || token.Typ == ItemRightDelimiter || token.Typ == ItemAsterisk:
-		return t.newText(token.Pos, token.Val)
-	default:
-		t.errorf(fmt.Sprintf("unexpected token: %s", token))
-	}
+	/*	switch token := t.nextNonSpace(); {
+		case token.Typ == ItemText:
+			return t.NewText(token.Pos, token.Val)
+		case token.Typ == ItemLeftDelimiter || token.Typ == ItemRightDelimiter || token.Typ == ItemAsterisk:
+			return t.NewText(token.Pos, token.Val)
+		default:
+			t.errorf(fmt.Sprintf("unexpected token: %s", token))
+		}*/
 	return nil
 }
