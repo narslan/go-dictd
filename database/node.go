@@ -119,6 +119,7 @@ const (
 	NodeList          // A List of Nodes.
 	NodeMap
 	NodeEnd
+	NodeBreak
 )
 
 type ListNode struct {
@@ -179,6 +180,19 @@ func (m MapNode) String() (s string) {
 
 // endNode represents an {{end}} action.
 // It does not appear in the final parse tree.
+type BreakNode struct {
+	NodeType
+	Pos
+}
+
+func (t *Tree) NewBreak(pos Pos) *BreakNode {
+	return &BreakNode{NodeType: NodeBreak, Pos: pos}
+}
+
+func (e *BreakNode) String() string {
+	return "end"
+}
+
 type EndNode struct {
 	NodeType
 	Pos

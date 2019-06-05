@@ -145,8 +145,6 @@ func lexText(l *Lexer) stateFn {
 		l.emit(ItemLeftDelimiter)
 	case r == '}':
 		l.emit(ItemRightDelimiter)
-	case r == '*':
-		l.emit(ItemAsterisk)
 	case r == '\'' || r == '"':
 		return lexQuote
 	case isAlphaNumeric(r):
@@ -215,16 +213,7 @@ Loop:
 			// absorb.
 		default:
 			l.backup()
-			//word := l.Input[l.Start:l.Pos]
-			//	fmt.Printf("Catched >%s<  ", word)
-			//_, ok := preDefined[word]
-			//switch {
-			//case ok:
-			//l.emit(ItemKeyword)
-			//default:
 			l.emit(ItemText)
-			//}
-
 			break Loop
 		}
 	}
@@ -264,5 +253,5 @@ func isEndOfLine(r rune) bool {
 
 // isAlphaNumeric reports whether r is an alphabetic, digit, or underscore.
 func isAlphaNumeric(r rune) bool {
-	return r == '_' || r == '-' || r == '.' || r == '/' || unicode.IsLetter(r) || unicode.IsDigit(r)
+	return r == '*' || r == '_' || r == '-' || r == '.' || r == '/' || unicode.IsLetter(r) || unicode.IsDigit(r)
 }

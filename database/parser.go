@@ -12,38 +12,39 @@ import (
 func Parse(text string) {
 
 	t := NewTree()
-	t.Parse(text)
 
-}
-
-// Parse parses the template definition string to construct a representation of
-// the template for execution. If either action delimiter string is empty, the
-// default ("{{" or "}}") is used. Embedded template definitions are added to
-// the treeSet map.
-func (t *Tree) Parse(text string) (err error) {
-	defer t.recover(&err)
+	t.Root = t.NewList(0)
 	t.Lex = Lex(text)
-	s := t.peek().Pos
-	//	fmt.Printf("%T", s)
-	t.Root = t.NewList(s)
+	t.Parse()
 
-	t.parse()
-	return nil
 }
 
 // parse is the top-level parser for a template, essentially the same
 // as ItemList except it also parses {{define}} actions.
 // It runs to EOF.
-func (t *Tree) parse() {
+func (t *Tree) Parse() {
 
-	for t.peek().Typ != ItemEOF {
+	// Root Selector contains all the roots.
+	rs := make([]*ListNode, 0)
+	depth := 0
+	rs = append(rs, t.Root)
+Loop:
+	for {
 
 		switch n := t.textOrAction(); n.Type() {
+		case NodeList:
+			fmt.Printf("New list node is created at depth %d\n", depth)
+			t := n.(*ListNode)
+			rs = append(rs, t)
+			depth++
 		case NodeEnd:
-			t.errorf(fmt.Sprintf("unexpected %s", n))
+			depth--
+			fmt.Printf("The list node is closed at depth %d\n", depth)
+		case NodeString:
+			fmt.Printf("item is added at depth %d %s\n", depth, n)
+			rs[depth].Append(n)
 		default:
-			t.Root.Append(n)
-			fmt.Println(n)
+			break Loop
 		}
 
 	}
@@ -52,13 +53,30 @@ func (t *Tree) parse() {
 // textOrAction:
 //	text | action
 func (t *Tree) textOrAction() Node {
-	/*	switch token := t.nextNonSpace(); {
-		case token.Typ == ItemText:
-			return t.NewText(token.Pos, token.Val)
-		case token.Typ == ItemLeftDelimiter || token.Typ == ItemRightDelimiter || token.Typ == ItemAsterisk:
-			return t.NewText(token.Pos, token.Val)
-		default:
-			t.errorf(fmt.Sprintf("unexpected token: %s", token))
-		}*/
+	switch token := t.nextNonSpace(); {
+	case token.Typ == ItemText:
+		return t.NewString(token.Val, token.Pos)
+	case token.Typ == ItemLeftDelimiter:
+		return t.action()
+	case token.Typ == ItemRightDelimiter:
+		return t.end()
+	default:
+		return t.endParse()
+	}
 	return nil
+}
+
+func (t *Tree) action() (n Node) {
+	token := t.peek()
+	return t.NewList(token.Pos)
+}
+
+func (t *Tree) end() (n Node) {
+	token := t.peek()
+	return t.NewEnd(token.Pos)
+}
+
+func (t *Tree) endParse() (n Node) {
+	token := t.peek()
+	return t.NewBreak(token.Pos)
 }
