@@ -1,82 +1,108 @@
 package database
 
 import (
-	"fmt"
+	_ "fmt"
 )
 
-// Parse returns a map from template name to parse.Tree, created by parsing the
-// templates described in the argument string. The top-level template will be
-// given the specified name. If an error is encountered, parsing stops and an
-// empty map is returned with the error.
-// next returns the next token.
-func Parse(text string) {
+func Parse(text string) []*ListNode {
 
 	t := NewTree()
 
-	t.Root = t.NewList(0)
 	t.Lex = Lex(text)
-	t.Parse()
 
-}
-
-// parse is the top-level parser for a template, essentially the same
-// as ItemList except it also parses {{define}} actions.
-// It runs to EOF.
-func (t *Tree) Parse() {
+	t.Root = t.NewList(t.peek().Pos)
 
 	// Root Selector contains all the roots.
 	rs := make([]*ListNode, 0)
 	depth := 0
 	rs = append(rs, t.Root)
-Loop:
-	for {
 
-		switch n := t.textOrAction(); n.Type() {
+LOOP:
+	for t.peek().Typ != ItemEOF {
+
+		switch n := t.Action(); n.Type() {
 		case NodeList:
-			fmt.Printf("New list node is created at depth %d\n", depth)
+			//	fmt.Printf("New list node is created at depth %d\n", depth)
 			t := n.(*ListNode)
 			rs = append(rs, t)
 			depth++
-		case NodeEnd:
+		case NodeClose:
 			depth--
-			fmt.Printf("The list node is closed at depth %d\n", depth)
+		//	fmt.Printf("The list node is closed at depth %d\n", depth)
 		case NodeString:
-			fmt.Printf("item is added at depth %d %s\n", depth, n)
+			//fmt.Printf("item is added at depth %d %s\n", depth, n)
 			rs[depth].Append(n)
-		default:
-			break Loop
+		case NodeEnd:
+			break LOOP
 		}
 
 	}
+	return rs
 }
 
 // textOrAction:
 //	text | action
-func (t *Tree) textOrAction() Node {
+func (t *Tree) Action() Node {
 	switch token := t.nextNonSpace(); {
 	case token.Typ == ItemText:
 		return t.NewString(token.Val, token.Pos)
 	case token.Typ == ItemLeftDelimiter:
-		return t.action()
+		return t.NewList(token.Pos)
 	case token.Typ == ItemRightDelimiter:
-		return t.end()
+		return t.NewClose(token.Pos)
 	default:
-		return t.endParse()
+		return t.NewEnd(token.Pos)
 	}
 	return nil
 }
 
-func (t *Tree) action() (n Node) {
-	token := t.peek()
-	return t.NewList(token.Pos)
+type DictdFile struct {
+	Name  string
+	Data  string
+	Index string
 }
 
-func (t *Tree) end() (n Node) {
-	token := t.peek()
-	return t.NewEnd(token.Pos)
-}
+func ParseDatabases(text string) []*DictdFile {
 
-func (t *Tree) endParse() (n Node) {
-	token := t.peek()
-	return t.NewBreak(token.Pos)
+	t := NewTree()
+
+	t.Lex = Lex(text)
+
+	t.Root = t.NewList(t.peek().Pos)
+
+	dictc := make([]*DictdFile, 0)
+LOOP:
+	for t.peek().Typ != ItemEOF {
+		token := t.nextNonSpace()
+		switch {
+		case token.Val == "database":
+			file := &DictdFile{}
+			dictc = append(dictc, file)
+			dictname := t.nextNonSpace()
+			file.Name = dictname.Val
+			del := t.nextNonSpace()
+			if del.Typ == ItemLeftDelimiter {
+				datad := t.nextNonSpace()
+				if datad.Val == "data" {
+					datadv := t.nextNonSpace()
+					file.Data = datadv.Val
+
+					dataiv := t.nextNonSpace()
+					if dataiv.Val == "index" {
+						indexv := t.nextNonSpace()
+						file.Index = indexv.Val
+					}
+
+				}
+
+			} else {
+				t.errorf("{ expected")
+			}
+
+			//			fmt.Printf("%v\n", token.Val)
+		case token.Typ == ItemEOF:
+			break LOOP
+		}
+	}
+	return dictc
 }
