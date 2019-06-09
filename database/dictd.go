@@ -19,12 +19,19 @@ type IndexPos struct {
 // the dictionary files and a description.
 // Usually file names stem from a configuration file.
 
-func NewDictdDatabase(indexPath string, dbPath string, description string) (*DictdDatabase, error) {
+func NewDictdDatabase(name string, indexPath string, dbPath string) (*DictdDatabase, error) {
+
+	if _, err := os.Stat(dbPath); err != nil {
+		return nil, err
+	}
+	if _, err := os.Stat(indexPath); err != nil {
+		return nil, err
+	}
 
 	databaseBackend := DictdDatabase{
-		description: description,
-		index:       indexPath,
-		database:    dbPath,
+		Name:  name,
+		Index: indexPath,
+		File:  dbPath,
 	}
 
 	return &databaseBackend, nil
@@ -36,10 +43,9 @@ func NewDictdDatabase(indexPath string, dbPath string, description string) (*Dic
 
 type DictdDatabase struct {
 	dictd.Database
-
-	description string
-	index       string
-	database    string
+	Name  string
+	Index string
+	File  string
 }
 
 /* Get all valid Strategies */
@@ -53,15 +59,17 @@ func (d *DictdDatabase) Strategies(name string) map[string]string {
 	}
 }
 
+//TODO:
 /* Handle the information call (SHOW INFO `name`) for this database. */
-func (this *DictdDatabase) Info(name string) string {
-	return "Foo"
+func (d *DictdDatabase) Info(text string) string {
+	return "Not Impelemented"
 }
 
+//TODO:
 /* Handle the short description of what this database does (for
  * inline `SHOW DB` output) */
-func (this *DictdDatabase) Description(name string) string {
-	return this.description
+func (d *DictdDatabase) Description(s string) string {
+	return s
 }
 
 /* Handle incoming `DEFINE` calls. */
@@ -82,15 +90,15 @@ func (this *DictdDatabase) Define(name string, query string) []*dictd.Definition
 	return els
 }
 
-func (this *DictdDatabase) get(query string) (value string, err error) {
+func (d *DictdDatabase) get(query string) (value string, err error) {
 
-	iFile, err1 := os.Open(this.index)
+	iFile, err1 := os.Open(d.Index)
 	if err1 != nil {
 		return "", err1
 	}
 	defer iFile.Close()
 
-	dbFile, err2 := os.Open(this.database)
+	dbFile, err2 := os.Open(d.File)
 	if err2 != nil {
 		return "", err2
 	}

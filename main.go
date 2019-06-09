@@ -12,28 +12,12 @@ func main() {
 
 	server := dictd.NewServer("dictd server")
 
-	db, err := database.NewDictdDatabase(
-		"/usr/share/dictd/deu-eng.index",
-		"/usr/share/dictd/deu-eng.dict.dz",
-		"German English Database",
-	)
+	r := database.ReadConfig("/etc/dict/dictd.conf")
+	for _, v := range r {
 
-	if err != nil {
-		log.Fatal(err)
+		server.RegisterDatabase(v, v.Name, true)
+
 	}
-
-	db2, err2 := database.NewDictdDatabase(
-		"/usr/share/dictd/wn.index",
-		"/usr/share/dictd/wn.dict.dz",
-		"Word Net English Database",
-	)
-
-	if err2 != nil {
-		log.Fatal(err2)
-	}
-
-	server.RegisterDatabase(db, "deu-eng", true)
-	server.RegisterDatabase(db2, "wn", true)
 
 	link, err := net.Listen("tcp", ":2628")
 	if err != nil {

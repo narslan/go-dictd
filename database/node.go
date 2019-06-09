@@ -97,7 +97,6 @@ func (t *Tree) recover(errp *error) {
 }
 
 // NewTree allocates and returns a Tree.
-//
 
 func NewTree() *Tree {
 	return &Tree{}
@@ -117,7 +116,6 @@ func (t NodeType) Type() NodeType {
 const (
 	NodeString = iota // A string constant.
 	NodeList          // A List of Nodes.
-	NodeMap
 	NodeEnd
 	NodeClose
 )
@@ -156,26 +154,6 @@ func (t *Tree) NewString(text string, pos Pos) *StringNode {
 
 func (s *StringNode) String() string {
 	return s.Text + "\n"
-}
-
-type MapNode struct {
-	NodeType
-	Pos
-	Value map[string]string
-}
-
-func (t *Tree) NewMap(key, value string, pos Pos) *MapNode {
-	m := make(map[string]string)
-	m[key] = value
-	return &MapNode{NodeType: NodeMap, Value: m, Pos: pos}
-}
-
-func (m MapNode) String() (s string) {
-
-	for k, v := range m.Value {
-		s = "Key:" + k + "Value:" + v
-	}
-	return s
 }
 
 type CloseNode struct {

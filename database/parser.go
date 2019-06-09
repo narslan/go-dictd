@@ -1,8 +1,13 @@
 package database
 
 import (
-	_ "fmt"
+	"io/ioutil"
+	"log"
 )
+
+// Parse parses dictd configuration file format in a tree. As it is not used at the moment,
+// it is useless. But it will be used as a boilerplate for further
+// development.
 
 func Parse(text string) []*ListNode {
 
@@ -40,8 +45,7 @@ LOOP:
 	return rs
 }
 
-// textOrAction:
-//	text | action
+// Action determines what type of token flows in.
 func (t *Tree) Action() Node {
 	switch token := t.nextNonSpace(); {
 	case token.Typ == ItemText:
@@ -56,45 +60,57 @@ func (t *Tree) Action() Node {
 	return nil
 }
 
-type DictdFile struct {
-	Name  string
-	Data  string
-	Index string
-}
+// ReadConfig reads a dictd configuration file and
+// returns the available dictionaries.
+// TODO: Handling parse errors
+func ReadConfig(filePath string) []*DictdDatabase {
 
-func ParseDatabases(text string) []*DictdFile {
+	c, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s := string(c)
 
 	t := NewTree()
 
-	t.Lex = Lex(text)
+	t.Lex = Lex(s)
 
 	t.Root = t.NewList(t.peek().Pos)
 
-	dictc := make([]*DictdFile, 0)
+	dictc := make([]*DictdDatabase, 0)
+
 LOOP:
 	for t.peek().Typ != ItemEOF {
 		token := t.nextNonSpace()
 		switch {
 		case token.Val == "database":
-			file := &DictdFile{}
-			dictc = append(dictc, file)
-			dictname := t.nextNonSpace()
-			file.Name = dictname.Val
-			del := t.nextNonSpace()
-			if del.Typ == ItemLeftDelimiter {
-				datad := t.nextNonSpace()
-				if datad.Val == "data" {
-					datadv := t.nextNonSpace()
-					file.Data = datadv.Val
+			//file := &DictdDatabase{}
+			//dictc = append(dictc, file)
 
+			name := t.nextNonSpace().Val
+			var indexPath, dbPath string
+
+			delimiter := t.nextNonSpace()
+
+			if delimiter.Typ == ItemLeftDelimiter {
+				//"data" token, consume it.
+				datad := t.nextNonSpace()
+				// Find data and consume.
+				if datad.Val == "data" {
+					dbPath = t.nextNonSpace().Val
+					// Find index.
 					dataiv := t.nextNonSpace()
 					if dataiv.Val == "index" {
-						indexv := t.nextNonSpace()
-						file.Index = indexv.Val
+						indexPath = t.nextNonSpace().Val
 					}
 
 				}
-
+				d, err := NewDictdDatabase(name, indexPath, dbPath)
+				if err != nil {
+					log.Fatal(err)
+				}
+				dictc = append(dictc, d)
 			} else {
 				t.errorf("{ expected")
 			}
